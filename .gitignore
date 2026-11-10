@@ -1,0 +1,35 @@
+# Private workflow state and local context overrides
+.local/
+/AGENTS.override.md
+
+# Python runtime and local environments
+__pycache__/
+*.py[cod]
+.venv/
+
+# Real environment files; only a deliberately sanitized example may be shared
+.env
+.env.*
+!.env.example
+
+# Operational output and common secret/key files
+logs/
+*.log
+*.log.*
+.secrets/
+secrets/
+credentials.json
+credentials.*.json
+secrets.json
+secrets.*.json
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Local editor/OS artifacts
+*.swp
+*.swo
+.DS_Store

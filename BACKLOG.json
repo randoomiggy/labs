@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "key": "EP-001",
+      "topic": "python/system-tools",
+      "title": "Stream a synthetic HTTP log summary",
+      "goal": "Summarize a single-pass iterable of synthetic log lines without loading the input into memory.",
+      "slug": "ep001_log_summary",
+      "scope": "practice/ep001_log_summary",
+      "level": "intro",
+      "depends_on": [],
+      "source": "original exercise",
+      "acceptance": [
+        "Define the complete synthetic format as four ASCII fields separated by exactly one ASCII space: timestamp method path status. Match the whole line against [0-9]+ [A-Z]+ /[A-Za-z0-9/_-]* [1-5][0-9]{2}. This is not an Apache/nginx log parser.",
+        "Each input string may have one terminal LF or CRLF, removed before matching; an unterminated final line is valid. Blank lines, bare CR, extra spaces/fields, invalid methods/paths and out-of-range statuses are malformed: skip them and increment malformed_lines, without aborting the stream.",
+        "Return valid_lines, malformed_lines and sparse status_counts keyed by integer HTTP status. Every valid line increments exactly one status count; empty input returns zero counters and an empty mapping. Only these summary counters are retained.",
+        "Run offline stdlib unittest cases for normal mixed statuses, empty input, statuses 100/599, timestamp 0, LF/CRLF/no final newline, malformed cases and a single-pass generator. Explain linear time in input characters and memory proportional to distinct statuses, excluding the current line."
+      ]
+    },
+    {
+      "key": "EP-002",
+      "topic": "python/cli",
+      "title": "Expose the log summary as a small CLI",
+      "goal": "Wrap the specified synthetic-log summary in a predictable argparse interface.",
+      "slug": "ep002_log_cli",
+      "scope": "practice/ep002_log_cli",
+      "level": "intro",
+      "depends_on": ["EP-001"],
+      "source": "original exercise",
+      "acceptance": [
+        "Accept an explicit UTF-8 input path or '-' for stdin; document arguments and the inherited EP-001 format and malformed-line policy.",
+        "Write deterministic JSON to stdout with status-count keys represented as JSON strings; diagnostics go to stderr. Missing/unreadable files, decoding errors and usage errors are nonzero exits; counted malformed lines alone are not fatal.",
+        "Keep parsing/summary logic separate from argument handling. If prerequisite code is unavailable or unapproved, include a self-contained implementation in this review bundle rather than applying an earlier proposal.",
+        "Run offline unittest cases for file/stdin equivalence, empty input, malformed lines, help/usage and read/decode errors; include a real local CLI subprocess smoke test using sys.executable."
+      ]
+    },
+    {
+      "key": "EP-003",
+      "topic": "algorithms/top-k",
+      "title": "Count and rank the top K synthetic paths",
+      "goal": "Compare a heap-based top-K selection with a straightforward reference implementation.",
+      "slug": "ep003_top_k_paths",
+      "scope": "practice/ep003_top_k_paths",
+      "level": "intro",
+      "depends_on": [],
+      "source": "original exercise",
+      "acceptance": [
+        "Consume an iterable of synthetic path strings and a nonnegative integer K; reject negative, boolean or non-integer K. Return at most K (path, count) pairs sorted by descending count, then ascending path for ties.",
+        "Define empty input, K=0, K greater than distinct-path count and repeated paths. Keep counting memory proportional to distinct paths; do not claim total O(K) memory for exact counts.",
+        "Implement heap-based selection and compare its results with a small full-sort reference over deterministic generated fixtures; explain counting and selection time/space separately.",
+        "Run offline unittest normal, tie, empty, K-boundary, invalid-K and generator cases. No online judge, network or copied challenge statement is required."
+      ]
+    },
+    {
+      "key": "EP-004",
+      "topic": "algorithms/sliding-window",
+      "title": "Track recent server errors in a sliding window",
+      "goal": "Use a deque to calculate a recent error count over an ordered synthetic event stream.",
+      "slug": "ep004_error_window",
+      "scope": "practice/ep004_error_window",
+      "level": "intro",
+      "depends_on": [],
+      "source": "original exercise",
+      "acceptance": [
+        "Accept nondecreasing integer timestamps and statuses 100..599 with a positive integer window W. For each current event at t, count 5xx events already seen in the prefix with timestamps in (t-W, t], including the current event if it is 5xx.",
+        "Specify duplicate timestamps and exact left-edge eviction; reject decreasing timestamps, invalid statuses and invalid W rather than silently sorting or changing the input.",
+        "Use a deque and explain amortized linear processing and memory proportional to retained active error events, not a universal constant bound.",
+        "Run offline unittest cases for normal windows, empty input, duplicates, no errors, left-edge equality, large timestamp gaps and invalid input; compare against a small prefix-scan reference."
+      ]
+    },
+    {
+      "key": "EP-005",
+      "topic": "sre/sli",
+      "title": "Calculate a synthetic request-based availability SLI",
+      "goal": "Make the event denominator and availability definition explicit before computing a ratio.",
+      "slug": "ep005_request_sli",
+      "scope": "practice/ep005_request_sli",
+      "level": "intro",
+      "depends_on": ["EP-001"],
+      "source": "original exercise",
+      "acceptance": [
+        "Take validated counts for HTTP statuses 100..599. Eligible requests are all valid log records; good=100..499 and bad=500..599. Malformed records are excluded and reported separately, not converted to success.",
+        "Return eligible/good/bad counts and an exact fractions.Fraction SLI good/eligible, or None when eligible=0. Explain that treating 4xx as good is a deliberate exercise policy, not a universal SRE definition.",
+        "Reject negative, boolean or non-integer counts and invalid status keys. Do not claim these synthetic fixtures measure an actual service's availability.",
+        "Run offline unittest cases for mixed, all-good, all-bad, 4xx-only, zero eligible, malformed-only and invalid counts; verify exact ratios before presentation rounding."
+      ]
+    },
+    {
+      "key": "EP-006",
+      "topic": "sre/error-budget",
+      "title": "Calculate a request-based error budget",
+      "goal": "Derive allowed failures and signed remaining budget from an explicit objective and synthetic counts.",
+      "slug": "ep006_error_budget",
+      "scope": "practice/ep006_error_budget",
+      "level": "intro",
+      "depends_on": ["EP-005"],
+      "source": "original exercise",
+      "acceptance": [
+        "Accept eligible/bad nonnegative integer counts with bad<=eligible and an exact Fraction objective in (0,1]. Compute allowed=eligible*(1-objective), remaining=allowed-bad and consumed=bad/allowed when allowed>0, otherwise None.",
+        "Keep fractional allowed failures exact and remaining signed: do not silently round the budget or clamp overspend to zero. Explain the zero-budget/zero-traffic cases explicitly.",
+        "Describe this as a single synthetic request-count calculation, not production SLO compliance, a time-based budget or a multi-window burn-rate alert.",
+        "Run offline unittest cases for under/exact/over budget, objective=1, zero traffic, invalid objectives and inconsistent counts; use exact Fraction assertions."
+      ]
+    },
+    {
+      "key": "EP-007",
+      "topic": "python/subprocess",
+      "title": "Run a local diagnostic child with a timeout",
+      "goal": "Handle success, nonzero exit and timeout as distinct observable subprocess outcomes.",
+      "slug": "ep007_subprocess_timeout",
+      "scope": "practice/ep007_subprocess_timeout",
+      "level": "intro",
+      "depends_on": [],
+      "source": "original exercise",
+      "acceptance": [
+        "Pass an argv sequence with shell=False and an explicit positive timeout; return a documented structured outcome with exit code, stdout/stderr and timeout indication. Do not interpret a failed child as success.",
+        "Use only synthetic local child programs launched with sys.executable in fixtures; no network, real service control, shell pipelines or credential-bearing environment is needed.",
+        "Handle timeout and process cleanup for the tested direct child. Document that this is neither an OS security sandbox nor proof of controlling arbitrary descendant processes.",
+        "Run actual offline unittest subprocess cases for success, stderr/nonzero exit, timeout and invalid timeout. Record observed results; do not substitute mocked execution for the entire test suite."
+      ]
+    },
+    {
+      "key": "EP-008",
+      "topic": "python/retry",
+      "title": "Implement bounded retry with an injectable clock",
+      "goal": "Test retry scheduling deterministically without network access or real sleeps.",
+      "slug": "ep008_retry_clock",
+      "scope": "practice/ep008_retry_clock",
+      "level": "intro",
+      "depends_on": [],
+      "source": "original exercise",
+      "acceptance": [
+        "Inject the operation, monotonic clock and sleep function; validate positive max_attempts and documented nonnegative initial delay/capped exponential backoff settings.",
+        "Retry only explicitly declared transient exceptions. Return immediately on success, propagate permanent exceptions unchanged, and re-raise the final transient exception on exhaustion.",
+        "A configured monotonic deadline prevents starting an attempt at or after that instant and prevents sleeping beyond it. Explain that a scheduling deadline cannot interrupt an already running operation; operation timeouts are separate.",
+        "Run offline unittest cases using a fake clock for immediate/eventual success, attempts exhausted, permanent error, capped delays, exact deadline boundary and invalid configuration. No real sleeps or external endpoints in these tests."
+      ]
+    },
+    {
+      "key": "EP-009",
+      "topic": "ai/json-validation",
+      "title": "Validate an offline AI-style JSON response",
+      "goal": "Treat AI-shaped output as untrusted data and enforce a small explicit contract without model calls.",
+      "slug": "ep009_ai_json_validation",
+      "scope": "practice/ep009_ai_json_validation",
+      "level": "intro",
+      "depends_on": [],
+      "source": "original exercise",
+      "acceptance": [
+        "Accept JSON text with exactly two root fields: summary is a nonblank string; labels is a list of unique strings drawn from info, warning, error. Reject extra/missing fields and wrong types.",
+        "Use stdlib json with explicit rejection of duplicate object keys and nonstandard NaN/Infinity values. Define malformed JSON errors and return a stable validation result rather than executing content.",
+        "Fixtures are synthetic AI-style outputs, not responses from an actual model. Strings remain inert data; validation is not a claim of general prompt-injection protection.",
+        "Run offline unittest normal/empty-label cases, wrong roots/types, blank summaries, duplicate/unknown labels, duplicate keys, nonstandard numbers and invalid JSON."
+      ]
+    },
+    {
+      "key": "EP-010",
+      "topic": "ai/offline-evaluation",
+      "title": "Evaluate a versioned fixture set",
+      "goal": "Measure a validator against fixed synthetic expectations with transparent denominators.",
+      "slug": "ep010_fixture_evaluation",
+      "scope": "practice/ep010_fixture_evaluation",
+      "level": "intro",
+      "depends_on": ["EP-009"],
+      "source": "original exercise",
+      "acceptance": [
+        "Define a small versioned fixture format with unique case IDs, raw response text and expected validity; valid cases additionally declare the expected label set. Reject malformed fixture definitions and duplicate IDs.",
+        "Report total cases, exact matches and per-case mismatches. A match requires expected validity and, for valid cases, the expected labels. Exact-match ratio is None for an empty set, not a perfect score.",
+        "Show fixture revision and the real locally calculated numerator/denominator. Label the result as synthetic fixture evaluation only: no real-model benchmark, generalization, quality or job-experience claims.",
+        "Run offline unittest cases for all/mixed/no matches, empty fixtures, duplicate IDs and malformed fixtures; test the evaluator with a deliberately wrong validator as well as a correct one."
+      ]
+    },
+    {
+      "key": "EP-011",
+      "topic": "ai/tool-validation",
+      "title": "Validate allowlisted tool requests without execution",
+      "goal": "Separate a proposed tool call's data contract from permission to run anything.",
+      "slug": "ep011_tool_request_validation",
+      "scope": "practice/ep011_tool_request_validation",
+      "level": "intro",
+      "depends_on": ["EP-009"],
+      "source": "original exercise",
+      "acceptance": [
+        "Validate a JSON object with exactly tool and arguments: tool must be summarize_log; arguments must contain exactly sample_id, a string from a documented fixed synthetic-fixture allowlist.",
+        "Reject unknown tools/keys, duplicate object keys, wrong types and non-allowlisted IDs. Paths, URLs and command text are never interpreted as sample IDs or permission.",
+        "Return only a validated data object or explicit errors. Do not dispatch tools, execute shell commands, evaluate code or access arbitrary files; explain that schema validity is not authorization.",
+        "Run offline unittest cases for valid fixtures, unknown tools/IDs, path-like IDs, extra/missing fields, wrong types, duplicate keys and malformed JSON."
+      ]
+    },
+    {
+      "key": "EP-012",
+      "topic": "devops/configuration",
+      "title": "Parse and validate a small report configuration",
+      "goal": "Use an explicit configuration contract rather than silent environment-dependent defaults.",
+      "slug": "ep012_report_config",
+      "scope": "practice/ep012_report_config",
+      "level": "intro",
+      "depends_on": [],
+      "source": "original exercise",
+      "acceptance": [
+        "Parse INI text with stdlib configparser and interpolation disabled. Require exactly [report] with top_k, window_seconds and target; reject DEFAULT entries, duplicate definitions, unknown sections/keys and missing fields.",
+        "Require top_k and window_seconds to be positive decimal integers and target to be a finite decimal objective in (0,1], converted exactly to Fraction. Document accepted lexical forms and errors.",
+        "Do not expand environment variables, load secrets or install parser/schema packages. Supply only a sanitized synthetic configuration example.",
+        "Run offline unittest cases for valid/boundary objectives, zero/negative values, nonfinite target, duplicate/unknown/missing fields and interpolation-like literal input."
+      ]
+    },
+    {
+      "key": "EP-013",
+      "topic": "python/reporting",
+      "title": "Render a deterministic synthetic reliability report",
+      "goal": "Keep presentation stable and separate from SLI/error-budget calculations.",
+      "slug": "ep013_reliability_json",
+      "scope": "practice/ep013_reliability_json",
+      "level": "intro",
+      "depends_on": ["EP-003", "EP-004", "EP-005", "EP-006"],
+      "source": "original exercise",
+      "acceptance": [
+        "Document a compact versioned JSON report contract containing valid/malformed and good/bad counts, SLI, objective, allowed/remaining budget, consumed ratio, ranked top_paths, window_seconds and final-prefix error-window count (null when there are no valid events); keep the renderer pure and free of file/network access.",
+        "Represent exact Fraction values using documented numerator/denominator objects and unavailable ratios as JSON null; do not round, clamp negative remaining budget or turn missing data into success.",
+        "Produce deterministic UTF-8-compatible JSON text with stable key order and one final newline. Mark the report as synthetic exercise data, not production monitoring.",
+        "Run offline unittest cases against exact expected output for normal, empty and overspent cases; verify serialization stability and that rendering does not mutate its input."
+      ]
+    },
+    {
+      "key": "EP-014",
+      "topic": "integration/offline-report",
+      "title": "Integrate a small offline reliability report CLI",
+      "goal": "Compose a bounded synthetic-log-to-report path with explicit configuration and real end-to-end tests.",
+      "slug": "ep014_offline_report",
+      "scope": "practice/ep014_offline_report",
+      "level": "intermediate",
+      "depends_on": ["EP-001", "EP-003", "EP-004", "EP-012", "EP-013"],
+      "source": "original exercise",
+      "acceptance": [
+        "Read an explicit synthetic-log file and validated configuration; compose summary, top-K paths, the final event's error-window count, SLI and budget into the deterministic EP-013 report. Use each configuration field and require nondecreasing valid-event timestamps, explicitly rejecting decreasing input rather than sorting silently.",
+        "Make required modules available in this new bundle if previous proposals are pending/rejected/absent; do not apply unapproved prerequisites or assume publication/learning from depends_on.",
+        "Document run/test commands, expected fixture output, stderr and nonzero exits for configuration/read/decode failures, and the inherited malformed-line policy. No network, model API, Docker or cloud is required.",
+        "Run actual offline unittest end-to-end CLI subprocess cases with sys.executable for normal, empty, malformed-only and over-budget fixtures plus bad configuration, missing files and decreasing timestamps; include a top-K tie and an exact window boundary. Record actual counts/output and limitations; do not claim a deployed monitoring service."
+      ]
+    }
+  ]
+}
